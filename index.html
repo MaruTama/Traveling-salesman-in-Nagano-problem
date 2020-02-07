@@ -2,19 +2,32 @@
 <!-- [Adding a line to a leaflet.js map](http://www.d3noob.org/2014/01/adding-line-to-leafletjs-map.html) -->
 <html>
 <head>
-    <title>Simple Leaflet Map</title>
+    <title>Problem of traveling salesman in Nagano</title>
     <meta charset="utf-8" />
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"
     />
-</head>
-<body>
-    <div id="map" style="width:auto; height:auto"></div>
-
     <script
         src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js">
     </script>
+    <!-- フルスクリーンにするために -->
+    <!-- [A full screen leaflet.js map](http://bl.ocks.org/d3noob/7654694) -->
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+
 
     <script>
         // これで長野県全部映る

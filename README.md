@@ -1,4 +1,4 @@
-# Traveling-salesman-in-Nagano-problem
+# Problem of traveling salesman in Nagano
 [算出した長野県全市町村巡回経路](https://marutama.github.io/Traveling-salesman-in-Nagano-problem/)
 
 
