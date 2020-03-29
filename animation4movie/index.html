@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+    <html lang="ja">
+      <head>
+        <meta charset="utf-8">
+        <title>D3 Test</title>
+        <style type="text/css">
+        .ward {
+            fill: #fff;
+            stroke: #aaa;
+        }
+        svg {
+            background: #eff;
+            padding: 40px;
+        }
+        </style>
+      </head>
+      <body>
+        <script src="http://d3js.org/d3.v4.min.js"></script>
+        <script src="https://unpkg.com/topojson@3"></script>
+        <script type="text/javascript">
+
+        var width = 960,
+        height = 640,
+        padding = 40;
+        //地図を描く先のsvg要素を準備
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        //緯度経度→画面座標の投影方法を指定。
+        var projection = d3.geoMercator()
+            .translate([width / 2, height / 2]);
+
+        //上記投影方法をオプションとして投影を行うfunctionを生成。
+        //ここで生成したfunctionであるpathは、GeoJSONのデータがinput、
+        //svgのpath要素のd属性に指定するパスコマンドがoutput。
+        var path = d3.geoPath()
+            .projection(projection);
+
+        // console.log(topojson);
+
+        d3.json("pref.Nagano.json", function(error, pref) {
+
+          // console.log(pref.objects["-"]);
+
+          var topo = topojson.feature(pref, pref.objects["-"]);
+          // console.log(topo.features);
+
+
+          projection
+              .center(d3.geoCentroid(topo))
+              .fitSize([width, height], topo);
+
+
+          //描画処理本体。
+          //D3.jsの機能を使いGeoJSONのデータ個数に合わせてpath要素を生成、
+          //path要素に対してGeoJSONのデータを紐付ける。(appendまで)
+          //最後のattrが肝。第二引数のpathは、上で作成したfunction。
+          //path functionは、path要素に紐付けられたGeoJSONデータを入力とし、
+          //projectionを踏まえて画面座標に投影したsvgのパスコマンドを出力し、
+          //それがd属性にセットされる。
+
+          // ただ表示するだけ
+          // svg.selectAll("path")
+          //   .data(topo.features)
+          //   .enter()
+          //   .append("path")
+          //   .attr("d", path);
+
+
+          svg.selectAll(".ward")
+              .data(topo.features)
+              .enter()
+              .append("path")
+              .attr("class", function(d) {
+                  return "ward ward-" + d.properties.N03_007;
+              })
+              .attr("d", path)
+              .on("mouseover", function(d) {
+                  d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#f99");
+                  var label = d.properties.N03_003 ? d.properties.N03_003 : '';
+                  label += d.properties.N03_004 ? d.properties.N03_004 : '';
+                  svg.append("text")
+                      .attr("x", d3.event.offsetX - padding - 20)
+                      .attr("y", d3.event.offsetY - padding - 15)
+                      .attr("class", "ward-label")
+                      .text(label);
+              })
+              .on("mouseout", function(d) {
+                  d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#fff");
+                  svg.select(".ward-label").remove();
+              });
+        });
+        </script>
+      </body>
+</html>
