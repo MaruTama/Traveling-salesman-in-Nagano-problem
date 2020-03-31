@@ -7,29 +7,54 @@
         .ward {
             fill: #fff;
             stroke: #aaa;
+            stroke-width: 0.7;
         }
-        svg {
+        /* 市町村地図 */
+        #map {
             background: #eff;
             padding: 40px;
+            z-index: 10;
+            position: absolute;
+        }
+        /* 経路  z-index で地図より上に配置する*/
+        #route {
+            padding: 40px;
+            z-index: 20;
+            position: absolute;
         }
         </style>
       </head>
       <body>
         <script src="http://d3js.org/d3.v4.min.js"></script>
         <script src="https://unpkg.com/topojson@3"></script>
+
+        <!-- svg 自体に z-index をかけることができないので、div で包む -->
+        <div id="map"></div>
+        <div id="route"></div>
         <script type="text/javascript">
 
         var width = 960,
         height = 640,
-        padding = 40;
+        padding = 40,
+        scale = 6400;
+
         //地図を描く先のsvg要素を準備
-        var svg = d3.select("body").append("svg")
+        var map = d3.select("#map")
+            .append("svg")
             .attr("width", width)
             .attr("height", height);
 
+        var route = d3.select("#route")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+
         //緯度経度→画面座標の投影方法を指定。
         var projection = d3.geoMercator()
-            .translate([width / 2, height / 2]);
+            .center([ 136.0, 35.6 ])
+            .translate([width/2, height/2])
+            .scale(scale);
 
         //上記投影方法をオプションとして投影を行うfunctionを生成。
         //ここで生成したfunctionであるpathは、GeoJSONのデータがinput、
@@ -37,20 +62,13 @@
         var path = d3.geoPath()
             .projection(projection);
 
-        // console.log(topojson);
+        // json を読み込み、どのような処理を行うか
+        d3.json("pref.Nagano.geojson", createMap);
+        d3.json("history-route.geojson", createRoute)
 
-        d3.json("pref.Nagano.json", function(error, pref) {
-
-          // console.log(pref.objects["-"]);
-
-          var topo = topojson.feature(pref, pref.objects["-"]);
-          // console.log(topo.features);
-
-
-          projection
-              .center(d3.geoCentroid(topo))
-              .fitSize([width, height], topo);
-
+        // 地図の表示
+        function createMap(error, pref) {
+          // console.log(pref);
 
           //描画処理本体。
           //D3.jsの機能を使いGeoJSONのデータ個数に合わせてpath要素を生成、
@@ -59,17 +77,8 @@
           //path functionは、path要素に紐付けられたGeoJSONデータを入力とし、
           //projectionを踏まえて画面座標に投影したsvgのパスコマンドを出力し、
           //それがd属性にセットされる。
-
-          // ただ表示するだけ
-          // svg.selectAll("path")
-          //   .data(topo.features)
-          //   .enter()
-          //   .append("path")
-          //   .attr("d", path);
-
-
-          svg.selectAll(".ward")
-              .data(topo.features)
+          var targetWard = map.selectAll(".ward")
+              .data(pref.features)
               .enter()
               .append("path")
               .attr("class", function(d) {
@@ -80,7 +89,7 @@
                   d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#f99");
                   var label = d.properties.N03_003 ? d.properties.N03_003 : '';
                   label += d.properties.N03_004 ? d.properties.N03_004 : '';
-                  svg.append("text")
+                  map.append("text")
                       .attr("x", d3.event.offsetX - padding - 20)
                       .attr("y", d3.event.offsetY - padding - 15)
                       .attr("class", "ward-label")
@@ -88,9 +97,75 @@
               })
               .on("mouseout", function(d) {
                   d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#fff");
-                  svg.select(".ward-label").remove();
+                  map.select(".ward-label").remove();
               });
-        });
+        }
+
+        // 経路の表示
+        function createRoute(error, line) {
+          var targetPath = route.selectAll(".line")
+        		.data(line.features.filter( function( d, i ) {
+              // Point でないデータのみ取り出す
+              return (d.geometry.type === "LineString") ? d : null;
+            }))
+        		.enter()
+        		.append("path")
+            .attr("class","line")
+            .attr("d", path)
+            .attr("fill", "none")
+            .attr("stroke", "red")
+        		.attr("stroke-width", 1.0);
+
+          // 各セレクション（各役場間の経路）を取り出す
+          var pathNodes = targetPath.nodes();
+          pathNodes.map(function( pathNode, index ) {
+
+            //アニメーションcircle追加
+            var circle = route.append("circle")
+              .attr("r", 2)
+              .attr("fill", "black")
+              .attr("transform",
+                function () {
+                  var p = pathNode.getPointAtLength(0)
+                    return "translate(" + [p.x, p.y] + ")";
+                }
+              );
+
+            // 有効時間
+            const time = 3000;
+
+            //アニメーション実行
+            circle.transition()
+              .delay(time*index) // 開始時間
+              .duration(time)    // 有効時間
+              .ease(d3.easeCubic)
+              .attrTween("transform", function (d, i) {
+                return function (t) {
+                  // t : 0 ~ 1 媒介変数
+                  var pathLength = pathNode.getTotalLength();
+                  var p = pathNode.getPointAtLength(pathLength*t);
+                  // 色を変える
+                  // N03_007 で指定する
+                  // d3.selectAll(".ward-20201").style("fill", "#000");
+                  return "translate(" + [p.x, p.y] + ")";
+                }
+              })
+              .on("end", function() { // トランジション終了後
+                // アニメーションを終えたcircleを削除する
+                this.remove();
+              });
+
+          })
+
+          // ただ表示するだけ
+          // route.selectAll("path")
+          //   .data(pref.features)
+          //   .enter()
+          //   .append("path")
+          //   .attr("d", path);
+
+        }
+
         </script>
       </body>
 </html>
