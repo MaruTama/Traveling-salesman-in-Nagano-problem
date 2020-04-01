@@ -36,7 +36,7 @@
         var width = 960,
         height = 640,
         padding = 40,
-        scale = 6400;
+        scale = 16000;
 
         //地図を描く先のsvg要素を準備
         var map = d3.select("#map")
@@ -52,31 +52,40 @@
 
         //緯度経度→画面座標の投影方法を指定。
         var projection = d3.geoMercator()
-            .center([ 136.0, 35.6 ])
+            .center([ 137.97, 36.11 ])
             .translate([width/2, height/2])
             .scale(scale);
 
-        //上記投影方法をオプションとして投影を行うfunctionを生成。
-        //ここで生成したfunctionであるpathは、GeoJSONのデータがinput、
-        //svgのpath要素のd属性に指定するパスコマンドがoutput。
+        //上記投影方法をオプションとして投影を行う　function　を生成。
+        //ここで生成した　function　である　path　は、GeoJSON　のデータが　input、
+        //svg　の　path　要素の　d　属性に指定するパスコマンドが　output。
         var path = d3.geoPath()
             .projection(projection);
 
         // json を読み込み、どのような処理を行うか
         d3.json("pref.Nagano.geojson", createMap);
-        d3.json("history-route.geojson", createRoute)
+
+        // 複数のファイルを取得したいので、二重にコールバックしてる
+        // 各役場間経路取得
+        d3.json("history-route.geojson", function(routeJson){
+          // 巡回する順番と市町村名、国土数値情報行政区域データの市町村名コード？の　N03_007　を取得する
+          d3.json("arranged-wards.json", function(arrangedWardsJson){
+            createRoute(routeJson, arrangedWardsJson);
+          });
+        })
+
 
         // 地図の表示
         function createMap(error, pref) {
           // console.log(pref);
 
           //描画処理本体。
-          //D3.jsの機能を使いGeoJSONのデータ個数に合わせてpath要素を生成、
-          //path要素に対してGeoJSONのデータを紐付ける。(appendまで)
-          //最後のattrが肝。第二引数のpathは、上で作成したfunction。
-          //path functionは、path要素に紐付けられたGeoJSONデータを入力とし、
-          //projectionを踏まえて画面座標に投影したsvgのパスコマンドを出力し、
-          //それがd属性にセットされる。
+          //D3.js　の機能を使い　GeoJSON　のデータ個数に合わせて　path　要素を生成、
+          //path　要素に対して　GeoJSON　のデータを紐付ける。(appendまで)
+          //最後の　attr　が肝。第二引数の　path　は、上で作成した　function。
+          //path function　は、path　要素に紐付けられた　GeoJSON　データを入力とし、
+          //projection　を踏まえて画面座標に投影した　svg　のパスコマンドを出力し、
+          //それが　d　属性にセットされる。
           var targetWard = map.selectAll(".ward")
               .data(pref.features)
               .enter()
@@ -84,27 +93,23 @@
               .attr("class", function(d) {
                   return "ward ward-" + d.properties.N03_007;
               })
-              .attr("d", path)
-              .on("mouseover", function(d) {
-                  d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#f99");
-                  var label = d.properties.N03_003 ? d.properties.N03_003 : '';
-                  label += d.properties.N03_004 ? d.properties.N03_004 : '';
-                  map.append("text")
-                      .attr("x", d3.event.offsetX - padding - 20)
-                      .attr("y", d3.event.offsetY - padding - 15)
-                      .attr("class", "ward-label")
-                      .text(label);
-              })
-              .on("mouseout", function(d) {
-                  d3.selectAll(".ward-" + d.properties.N03_007).style("fill", "#fff");
-                  map.select(".ward-label").remove();
-              });
+              .attr("d", path);
+
+              // 長野市はスタート地点なので最初から色を塗っておく
+              var clasName = ".ward-20201";
+              d3.selectAll(clasName).style("fill", "#000");
         }
 
-        // 経路の表示
-        function createRoute(error, line) {
+        // 経路の表示と移動アニメーション、巡回した市町村名の塗りつぶし
+        function createRoute() {
+          var data = Array.prototype.slice.call(arguments);
+          const routeJson = data[0];
+          const arrangedWardsJson =  data[1];
+
+          // console.log(arrangedWardsJson);
+
           var targetPath = route.selectAll(".line")
-        		.data(line.features.filter( function( d, i ) {
+        		.data(routeJson.features.filter( function( d, i ) {
               // Point でないデータのみ取り出す
               return (d.geometry.type === "LineString") ? d : null;
             }))
@@ -114,7 +119,7 @@
             .attr("d", path)
             .attr("fill", "none")
             .attr("stroke", "red")
-        		.attr("stroke-width", 1.0);
+        		.attr("stroke-width", 1.3);
 
           // 各セレクション（各役場間の経路）を取り出す
           var pathNodes = targetPath.nodes();
@@ -122,7 +127,7 @@
 
             //アニメーションcircle追加
             var circle = route.append("circle")
-              .attr("r", 2)
+              .attr("r", 4)
               .attr("fill", "black")
               .attr("transform",
                 function () {
@@ -132,11 +137,12 @@
               );
 
             // 有効時間
-            const time = 3000;
+            const time = 1000;
+            // console.log(arrangedWardsJson[index].N03_007);
 
             //アニメーション実行
             circle.transition()
-              .delay(time*index) // 開始時間
+              .delay(time*index) // 開始時間 (index を掛けて順番に移動するようにする)
               .duration(time)    // 有効時間
               .ease(d3.easeCubic)
               .attrTween("transform", function (d, i) {
@@ -144,11 +150,15 @@
                   // t : 0 ~ 1 媒介変数
                   var pathLength = pathNode.getTotalLength();
                   var p = pathNode.getPointAtLength(pathLength*t);
-                  // 色を変える
-                  // N03_007 で指定する
-                  // d3.selectAll(".ward-20201").style("fill", "#000");
                   return "translate(" + [p.x, p.y] + ")";
                 }
+              })
+              .on("start", function() { // トランジション開始時
+                console.log(arrangedWardsJson[index].name);
+                // 色を変える
+                // 市町村名コード？の　N03_007 で指定する
+                var clasName = ".ward-" + arrangedWardsJson[index].N03_007;
+                d3.selectAll(clasName).style("fill", "#000");
               })
               .on("end", function() { // トランジション終了後
                 // アニメーションを終えたcircleを削除する

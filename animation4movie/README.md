@@ -3,6 +3,8 @@
 - [【D3.js】地図上に都市と都市を結ぶ線を引く](https://shimz.me/blog/d3-js/2913)
 - [D3.jsでWebに地図を描く【TopoJSON作成・Toposimplify圧縮比較】](https://ssit.jp/d3-map-diff-toposimplify/)
 - [d3.js "v4" にて地図描画](https://qiita.com/hiyuzawa/items/b28fa4d380d02d8bd5a1)
+- [D3.jsで都道府県別の地図を描く](https://qiita.com/ran/items/d88c5126362576be3291)
+- [【D3.js】複数のデータファイルの読み込み(非同期処理)をまとめる](https://shimz.me/blog/d3-js/3087)
 
 データダウンロード
 - [国土数値情報　行政区域データ](http://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v2_3.html)
