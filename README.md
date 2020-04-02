@@ -13,8 +13,15 @@
 木島平村 -> 栄村 -> 野沢温泉村 -> 山ノ内町 -> 中野市 -> 小布施町 -> 高山村 -> 須坂市 ->  
 多スタート戦略で得られた経路の総移動距離 = 1304.8 km  
 
+## 手順
+```
+#各市町村間の距離を取得するサンプル
+$ python examples/directionsAPI.py [API_KEY]
+#各市町村間の距離を取得して、最短経路を導出する
+$ python main.py [API_KEY] ./nagano.json
+```
 
-ref
+## ref
 - [ 市町村一覧（役場所在地・電話番号・メールアドレス等）](https://www.pref.nagano.lg.jp/shichoson/kensei/shichoson/gappei/gappei/mejiiko/ichiran/index.html)
 - [Google スプレッド シートで住所→緯度経度変換](https://qiita.com/blue_islands/items/d7e912fe21512cd4c9fd)
 
